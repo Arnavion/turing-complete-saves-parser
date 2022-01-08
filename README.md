@@ -1,5 +1,7 @@
 Parser of save files for [Turing Complete.](https://turingcomplete.game/) Based on https://github.com/Stuffe/save_monger
 
+Supports version 49 (old) and version 0 (current) saves. Version 48 (older) saves are not supported.
+
 # License
 
 ```

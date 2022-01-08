@@ -1,0 +1,8 @@
+[package]
+name = "turing-complete-saves-parser"
+version = "0.1.0"
+authors = [
+	"Arnavion <me@arnavion.dev>",
+	"Stuffe",
+]
+edition = "2021"
