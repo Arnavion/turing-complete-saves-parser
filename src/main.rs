@@ -23,7 +23,7 @@ fn main() {
 		else {
 			let input = std::fs::read(arg1).unwrap();
 			let save = <turing_complete_saves_parser::Save<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
-			println!("{:#?}", save);
+			println!("{save:#?}");
 		}
 	}
 	else {

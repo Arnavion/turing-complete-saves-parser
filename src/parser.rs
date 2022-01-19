@@ -121,7 +121,7 @@ macro_rules! enum_impl_from {
 			fn from(raw: $repr_ty) -> Self {
 				match raw {
 					$($field_value => $enum_name :: $field_name,)*
-					_ => unreachable!("{:?}", raw),
+					_ => unreachable!("{raw:?}"),
 				}
 			}
 		}
@@ -130,7 +130,7 @@ macro_rules! enum_impl_from {
 			fn from(s: &str) -> Self {
 				match s {
 					$(stringify!($field_name) => $enum_name :: $field_name,)*
-					_ => unreachable!("{:?}", s),
+					_ => unreachable!("{s:?}"),
 				}
 			}
 		}
