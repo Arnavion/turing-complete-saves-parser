@@ -1,33 +1,66 @@
-#![deny(rust_2018_idioms)]
-#![deny(clippy::all, clippy::pedantic)]
-#![allow(
-	clippy::default_trait_access,
-)]
-
-fn help(writer: &mut impl std::io::Write) {
-	drop(writer.write_all(b"\
-Parses a Turing Complete save file and prints a textual representation of the circuit.
-
-USAGE:
-    turing-complete-saves-parser <filename>
-"));
-}
-
 fn main() {
 	let mut args = std::env::args_os();
-	drop(args.next().unwrap());
-	if let Some(arg1) = args.next() {
-		if arg1 == "--help" {
-			help(&mut std::io::stdout());
-		}
-		else {
-			let input = std::fs::read(arg1).unwrap();
-			let save = <turing_complete_saves_parser::Save<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
-			println!("{save:#?}");
+	let argv0 = args.next().unwrap_or_else(|| env!("CARGO_BIN_NAME").into());
+	let path = parse_args(args, &argv0);
+
+	let input = std::fs::read(path).unwrap();
+	let circuit_data = <turing_complete_saves_parser::CircuitData as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
+	#[allow(clippy::match_same_arms)]
+	match circuit_data {
+		turing_complete_saves_parser::CircuitData::V6(input) =>
+			_ = <turing_complete_saves_parser::v6::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
+			// println!("{:#?}", <turing_complete_saves_parser::v6::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+
+		turing_complete_saves_parser::CircuitData::V7(input) =>
+			_ = <turing_complete_saves_parser::v7::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
+			// println!("{:#?}", <turing_complete_saves_parser::v7::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+
+		turing_complete_saves_parser::CircuitData::V8(input) =>
+			_ = <turing_complete_saves_parser::v8::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
+			// println!("{:#?}", <turing_complete_saves_parser::v8::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+
+		turing_complete_saves_parser::CircuitData::V9(input) =>
+			_ = <turing_complete_saves_parser::v9::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
+			// println!("{:#?}", <turing_complete_saves_parser::v9::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+
+		turing_complete_saves_parser::CircuitData::V10(input) =>
+			_ = <turing_complete_saves_parser::v10::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
+			// println!("{:#?}", <turing_complete_saves_parser::v10::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+	}
+}
+
+fn parse_args(mut args: impl Iterator<Item = std::ffi::OsString>, argv0: &std::ffi::OsStr) -> std::path::PathBuf {
+	let mut path = None;
+
+	for opt in &mut args {
+		match opt.to_str() {
+			Some("--help") => {
+				write_usage(std::io::stdout(), argv0);
+				std::process::exit(0);
+			},
+
+			Some("--") => {
+				path = args.next();
+				break;
+			},
+
+			_ if path.is_none() => path = Some(opt),
+
+			_ => write_usage_and_crash(argv0),
 		}
 	}
-	else {
-		help(&mut std::io::stderr());
-		std::process::exit(1);
-	}
+
+	let None = args.next() else { write_usage_and_crash(argv0); };
+
+	let Some(path) = path else { write_usage_and_crash(argv0); };
+	path.into()
+}
+
+fn write_usage_and_crash(argv0: &std::ffi::OsStr) -> ! {
+	write_usage(std::io::stderr(), argv0);
+	std::process::exit(1);
+}
+
+fn write_usage(mut w: impl std::io::Write, argv0: &std::ffi::OsStr) {
+	_ = writeln!(w, "Usage: {} <circuit.data>", argv0.to_string_lossy());
 }

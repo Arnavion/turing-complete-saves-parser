@@ -32,15 +32,32 @@ macro_rules! parse_int {
 	};
 }
 
-parse_int! { i64, u64, u32, u16, u8, i8 }
+parse_int! { i8, u8, i16, u16, i32, u32, i64, u64 }
 
-pub struct Slice<'a, T> {
+impl<'a, A, B> Parse<'a> for (A, B) where A: Parse<'a>, B: Parse<'a> {
+	fn parse(input: &mut &'a [u8]) -> Self {
+		let a = <_>::parse(input);
+		let b = <_>::parse(input);
+		(a, b)
+	}
+}
+
+#[derive(Clone, Copy)]
+pub struct Slice<'a, N, T> {
 	inner: &'a [u8],
+	len: std::marker::PhantomData<N>,
 	element: std::marker::PhantomData<T>,
 }
 
-impl<'a, T> Slice<'a, T> {
-	#[allow(clippy::iter_not_returning_iterator)]
+impl<'a, N, T> Slice<'a, N, T> where T: Parse<'a> {
+	pub fn until_end(inner: &'a [u8]) -> Self {
+		Self {
+			inner,
+			len: Default::default(),
+			element: Default::default(),
+		}
+	}
+
 	pub fn iter(&self) -> SliceIter<'a, T> {
 		SliceIter {
 			inner: self.inner,
@@ -49,19 +66,34 @@ impl<'a, T> Slice<'a, T> {
 	}
 }
 
-impl<'a, T> std::fmt::Debug for Slice<'a, T> where T: std::fmt::Debug + Parse<'a> {
+impl<'a, N, T> std::fmt::Debug for Slice<'a, N, T> where T: std::fmt::Debug + Parse<'a> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let mut f = f.debug_list();
-		for element in self.iter() {
+		for element in self {
 			f.entry(&element);
 		}
 		f.finish()
 	}
 }
 
-impl<'a, T> Parse<'a> for Slice<'a, T> where T: Parse<'a> {
+impl<'a, N, T> IntoIterator for &Slice<'a, N, T> where T: Parse<'a> {
+	type Item = T;
+	type IntoIter = SliceIter<'a, T>;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.iter()
+	}
+}
+
+impl<'a, N, T> Parse<'a> for Slice<'a, N, T>
+where
+	N: Parse<'a>,
+	usize: TryFrom<N>,
+	<usize as TryFrom<N>>::Error: std::fmt::Debug,
+	T: Parse<'a>
+{
 	fn parse(input: &mut &'a [u8]) -> Self {
-		let len = i64::parse(input).try_into().unwrap();
+		let len = usize::try_from(N::parse(input)).unwrap();
 		let original_input = *input;
 
 		for _ in 0..len {
@@ -70,8 +102,9 @@ impl<'a, T> Parse<'a> for Slice<'a, T> where T: Parse<'a> {
 
 		let consumed_input = &original_input[..(original_input.len() - input.len())];
 
-		Slice {
+		Self {
 			inner: consumed_input,
+			len: Default::default(),
 			element: Default::default(),
 		}
 	}
@@ -97,7 +130,7 @@ impl<'a, T> Iterator for SliceIter<'a, T> where T: Parse<'a> {
 
 impl<'a> Parse<'a> for &'a str {
 	fn parse(input: &mut &'a [u8]) -> Self {
-		let len = i64::parse(input).try_into().unwrap();
+		let len = usize::from(u16::parse(input));
 		let (result, rest) = input.split_at(len);
 		let result = std::str::from_utf8(result).unwrap();
 		*input = rest;
@@ -122,15 +155,6 @@ macro_rules! enum_impl_from {
 				match raw {
 					$($field_value => $enum_name :: $field_name,)*
 					_ => unreachable!("{raw:?}"),
-				}
-			}
-		}
-
-		impl From<&'_ str> for $enum_name {
-			fn from(s: &str) -> Self {
-				match s {
-					$(stringify!($field_name) => $enum_name :: $field_name,)*
-					_ => unreachable!("{s:?}"),
 				}
 			}
 		}

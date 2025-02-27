@@ -1,8 +1,23 @@
 [package]
 name = "turing-complete-saves-parser"
 version = "0.1.0"
-authors = [
-	"Arnavion <me@arnavion.dev>",
-	"Stuffe",
-]
-edition = "2021"
+license = "AGPL-3.0-only"
+authors = ["Arnav Singh <me@arnavion.dev>"]
+edition = "2024"
+publish = false
+
+
+[dependencies]
+snap = "1"
+
+
+[lints.rust]
+rust_2018_idioms = "deny"
+warnings = "deny"
+
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+default_trait_access = "allow"
+must_use_candidate = "allow"
