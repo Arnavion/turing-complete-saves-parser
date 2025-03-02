@@ -2,6 +2,7 @@
 mod parser;
 pub use parser::{
 	Either,
+	Encode,
 	Parse,
 	Slice, SliceIter,
 };

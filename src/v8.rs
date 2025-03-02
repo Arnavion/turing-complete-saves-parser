@@ -27,17 +27,17 @@ impl<'a> Parse<'a> for CircuitData<'a> {
 		let hub_id = <_>::parse(input);
 		let gate = <_>::parse(input);
 		let delay = <_>::parse(input);
-		let menu_visible = u8::parse(input) != 0;
+		let menu_visible = <_>::parse(input);
 		let clock_speed = <_>::parse(input);
-		let dependencies = <_>::parse(input);
+		let dependencies = Slice::parse_with_length_prefix(input);
 		let description = <_>::parse(input);
 		let camera_position = <_>::parse(input);
 		let synced = u8::parse(input).into();
 		_ = u16::parse(input);
-		let player_data = <_>::parse(input);
+		let player_data = Slice::parse_with_length_prefix(input);
 		let hub_description = <_>::parse(input);
-		let components = <_>::parse(input);
-		let wires = <_>::parse(input);
+		let components = Slice::parse_with_length_prefix(input);
+		let wires = Slice::parse_with_length_prefix(input);
 
 		let result = Self {
 			custom_id,
@@ -59,11 +59,13 @@ impl<'a> Parse<'a> for CircuitData<'a> {
 		let mut wires: std::collections::BTreeMap<_, _> = Default::default();
 		let mut found_dupes = false;
 		for wire in &result.wires {
+			let wire = wire.as_inner_ref();
 			let WireSegments::Segments(segments) = &wire.segments else { continue; };
 
 			let start = wire.start;
 			let mut end = start;
 			for segment in segments {
+				let segment = segment.as_inner_ref();
 				let len = i16::from(segment.length);
 				match segment.direction {
 					WireDirection::Right => end.x += len,
@@ -77,8 +79,8 @@ impl<'a> Parse<'a> for CircuitData<'a> {
 				}
 			}
 
-			if let Some(previous_wire) = wires.insert((start.min(end), start.max(end)), wire) {
-				println!("{wire:?} overlaps with {previous_wire:?}");
+			if let Some(previous_wire) = wires.insert((start.min(end), start.max(end)), format!("{wire:?}")) {
+				println!("{wire:?} overlaps with {previous_wire}");
 				found_dupes = true;
 			}
 		}
@@ -130,18 +132,18 @@ pub struct Component<'a> {
 
 impl<'a> Parse<'a> for Component<'a> {
 	fn parse(input: &mut &'a [u8]) -> Self {
-		let kind = u16::parse(input).into();
+		let kind = <_>::parse(input);
 		Self {
 			kind,
 			position: <_>::parse(input),
 			rotation: <_>::parse(input),
 			permanent_id: <_>::parse(input),
 			custom_string: <_>::parse(input),
-			settings: <_>::parse(input),
+			settings: Slice::parse_with_length_prefix(input),
 			buffer_size: <_>::parse(input),
 			ui_order: <_>::parse(input),
 			word_size: <_>::parse(input),
-			watched_components: <_>::parse(input),
+			watched_components: Slice::parse_with_length_prefix(input),
 			custom_data: matches!(kind, ComponentKind::Custom).then(|| <_>::parse(input)),
 			selected_programs: matches!(kind, ComponentKind::Assembler).then(|| <_>::parse(input)),
 		}
@@ -290,7 +292,7 @@ impl<'a> Parse<'a> for WatchedComponent<'a> {
 	}
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct CustomCompData<'a> {
 	pub id: i64,
 	pub static_states: Slice<'a, u16, (i64, i64)>,
@@ -300,7 +302,7 @@ impl<'a> Parse<'a> for CustomCompData<'a> {
 	fn parse(input: &mut &'a [u8]) -> Self {
 		Self {
 			id: <_>::parse(input),
-			static_states: <_>::parse(input),
+			static_states: Slice::parse_with_length_prefix(input),
 		}
 	}
 }
@@ -313,12 +315,12 @@ pub struct AssemblerInfo<'a> {
 impl<'a> Parse<'a> for AssemblerInfo<'a> {
 	fn parse(input: &mut &'a [u8]) -> Self {
 		Self {
-			programs: <_>::parse(input),
+			programs: Slice::parse_with_length_prefix(input),
 		}
 	}
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Wire<'a> {
 	pub color: u8,
 	pub comment: &'a str,
@@ -337,7 +339,7 @@ impl<'a> Parse<'a> for Wire<'a> {
 	}
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum WireSegments<'a> {
 	TeleWireEnd(Point),
 	Segments(Slice<'a, u64, WireSegment>),
@@ -351,9 +353,9 @@ impl<'a> Parse<'a> for WireSegments<'a> {
 		}
 		else {
 			#[allow(clippy::verbose_bit_mask)]
-			let segments = &input[..input.iter().position(|&b| b & 0x1f == 0).unwrap()];
+			let mut segments = &input[..input.iter().position(|&b| b & 0x1f == 0).unwrap()];
 			*input = &input[(segments.len() + 1)..];
-			Self::Segments(Slice::until_end(segments))
+			Self::Segments(Slice::parse_until_end(&mut segments))
 		}
 	}
 }

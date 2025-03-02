@@ -1,4 +1,5 @@
 use crate::parser::{
+	Encode,
 	Parse,
 	Slice,
 };
@@ -21,23 +22,33 @@ pub struct CircuitData<'a> {
 	pub wires: Slice<'a, u64, Wire<'a>>,
 }
 
+impl CircuitData<'_> {
+	pub fn encode_final(&self) -> Vec<u8> {
+		let mut raw = vec![];
+		self.encode(&mut raw);
+		let mut raw = snap::raw::Encoder::new().compress_vec(&raw).unwrap();
+		raw.insert(0, 10);
+		raw
+	}
+}
+
 impl<'a> Parse<'a> for CircuitData<'a> {
 	fn parse(input: &mut &'a [u8]) -> Self {
 		let custom_id = <_>::parse(input);
 		let hub_id = <_>::parse(input);
 		let gate = <_>::parse(input);
 		let delay = <_>::parse(input);
-		let menu_visible = u8::parse(input) != 0;
+		let menu_visible = <_>::parse(input);
 		let clock_speed = <_>::parse(input);
-		let dependencies = <_>::parse(input);
+		let dependencies = Slice::parse_with_length_prefix(input);
 		let description = <_>::parse(input);
 		let camera_position = <_>::parse(input);
 		let synced = u8::parse(input).into();
 		_ = u16::parse(input);
-		let player_data = <_>::parse(input);
+		let player_data = Slice::parse_with_length_prefix(input);
 		let hub_description = <_>::parse(input);
-		let components = <_>::parse(input);
-		let wires = <_>::parse(input);
+		let components = Slice::parse_with_length_prefix(input);
+		let wires = Slice::parse_with_length_prefix(input);
 
 		let result = Self {
 			custom_id,
@@ -57,6 +68,8 @@ impl<'a> Parse<'a> for CircuitData<'a> {
 		};
 
 		for component in &result.components {
+			let component = component.as_inner_ref();
+
 			#[allow(clippy::manual_assert)]
 			if matches!(component.kind, ComponentKind::StaticIndexer) && component.word_size <= 0 {
 				panic!("{component:?}");
@@ -71,11 +84,13 @@ impl<'a> Parse<'a> for CircuitData<'a> {
 		let mut wires: std::collections::BTreeMap<_, _> = Default::default();
 		let mut found_dupes = false;
 		for wire in &result.wires {
+			let wire = wire.as_inner_ref();
 			let WireSegments::Segments(segments) = &wire.segments else { continue; };
 
 			let start = wire.start;
 			let mut end = start;
 			for segment in segments {
+				let segment = segment.as_inner_ref();
 				let len = i16::from(segment.length);
 				match segment.direction {
 					WireDirection::Right => end.x += len,
@@ -89,14 +104,34 @@ impl<'a> Parse<'a> for CircuitData<'a> {
 				}
 			}
 
-			if let Some(previous_wire) = wires.insert((start.min(end), start.max(end)), wire) {
-				println!("{wire:?} overlaps with {previous_wire:?}");
+			if let Some(previous_wire) = wires.insert((start.min(end), start.max(end)), format!("{wire:?}")) {
+				println!("{wire:?} overlaps with {previous_wire}");
 				found_dupes = true;
 			}
 		}
 		assert!(!found_dupes);
 
 		result
+	}
+}
+
+impl Encode for CircuitData<'_> {
+	fn encode(&self, out: &mut Vec<u8>) {
+		self.custom_id.encode(out);
+		self.hub_id.encode(out);
+		self.gate.encode(out);
+		self.delay.encode(out);
+		self.menu_visible.encode(out);
+		self.clock_speed.encode(out);
+		self.dependencies.encode_with_length_prefix(out);
+		self.description.encode(out);
+		self.camera_position.encode(out);
+		self.synced.encode(out);
+		0_u16.encode(out);
+		self.player_data.encode_with_length_prefix(out);
+		self.hub_description.encode(out);
+		self.components.encode_with_length_prefix(out);
+		self.wires.encode_with_length_prefix(out);
 	}
 }
 
@@ -112,6 +147,13 @@ impl Parse<'_> for Point {
 			x: i16::parse(input),
 			y: i16::parse(input),
 		}
+	}
+}
+
+impl Encode for Point {
+	fn encode(&self, out: &mut Vec<u8>) {
+		self.x.encode(out);
+		self.y.encode(out);
 	}
 }
 
@@ -142,21 +184,38 @@ pub struct Component<'a> {
 
 impl<'a> Parse<'a> for Component<'a> {
 	fn parse(input: &mut &'a [u8]) -> Self {
-		let kind = u16::parse(input).into();
+		let kind = <_>::parse(input);
 		Self {
 			kind,
 			position: <_>::parse(input),
 			rotation: <_>::parse(input),
 			permanent_id: <_>::parse(input),
 			custom_string: <_>::parse(input),
-			settings: <_>::parse(input),
+			settings: Slice::parse_with_length_prefix(input),
 			buffer_size: <_>::parse(input),
 			ui_order: <_>::parse(input),
 			word_size: <_>::parse(input),
-			linked_components: <_>::parse(input),
+			linked_components: Slice::parse_with_length_prefix(input),
 			selected_programs: <_>::parse(input),
 			custom_data: matches!(kind, ComponentKind::Custom).then(|| <_>::parse(input)),
 		}
+	}
+}
+
+impl Encode for Component<'_> {
+	fn encode(&self, out: &mut Vec<u8>) {
+		self.kind.encode(out);
+		self.position.encode(out);
+		self.rotation.encode(out);
+		self.permanent_id.encode(out);
+		self.custom_string.encode(out);
+		self.settings.encode_with_length_prefix(out);
+		self.buffer_size.encode(out);
+		self.ui_order.encode(out);
+		self.word_size.encode(out);
+		self.linked_components.encode_with_length_prefix(out);
+		self.selected_programs.encode(out);
+		self.custom_data.encode(out);
 	}
 }
 
@@ -308,6 +367,15 @@ impl<'a> Parse<'a> for LinkedComponent<'a> {
 	}
 }
 
+impl Encode for LinkedComponent<'_> {
+	fn encode(&self, out: &mut Vec<u8>) {
+		self.permanent_id.encode(out);
+		self.inner_id.encode(out);
+		self.name.encode(out);
+		self.offset.encode(out);
+	}
+}
+
 #[derive(Clone, Debug)]
 pub struct AssemblerInfo<'a> {
 	pub programs: Slice<'a, u16, (&'a str, &'a str)>,
@@ -316,12 +384,18 @@ pub struct AssemblerInfo<'a> {
 impl<'a> Parse<'a> for AssemblerInfo<'a> {
 	fn parse(input: &mut &'a [u8]) -> Self {
 		Self {
-			programs: <_>::parse(input),
+			programs: Slice::parse_with_length_prefix(input),
 		}
 	}
 }
 
-#[derive(Clone, Copy, Debug)]
+impl Encode for AssemblerInfo<'_> {
+	fn encode(&self, out: &mut Vec<u8>) {
+		self.programs.encode_with_length_prefix(out);
+	}
+}
+
+#[derive(Clone, Debug)]
 pub struct CustomCompData<'a> {
 	pub id: i64,
 	pub static_states: Slice<'a, u16, (i64, i64)>,
@@ -331,12 +405,19 @@ impl<'a> Parse<'a> for CustomCompData<'a> {
 	fn parse(input: &mut &'a [u8]) -> Self {
 		Self {
 			id: <_>::parse(input),
-			static_states: <_>::parse(input),
+			static_states: Slice::parse_with_length_prefix(input),
 		}
 	}
 }
 
-#[derive(Clone, Copy, Debug)]
+impl Encode for CustomCompData<'_> {
+	fn encode(&self, out: &mut Vec<u8>) {
+		self.id.encode(out);
+		self.static_states.encode_with_length_prefix(out);
+	}
+}
+
+#[derive(Clone, Debug)]
 pub struct Wire<'a> {
 	pub color: u8,
 	pub comment: &'a str,
@@ -355,7 +436,16 @@ impl<'a> Parse<'a> for Wire<'a> {
 	}
 }
 
-#[derive(Clone, Copy, Debug)]
+impl Encode for Wire<'_> {
+	fn encode(&self, out: &mut Vec<u8>) {
+		self.color.encode(out);
+		self.comment.encode(out);
+		self.start.encode(out);
+		self.segments.encode(out);
+	}
+}
+
+#[derive(Clone, Debug)]
 pub enum WireSegments<'a> {
 	TeleWireEnd(Point),
 	Segments(Slice<'a, u64, WireSegment>),
@@ -369,9 +459,23 @@ impl<'a> Parse<'a> for WireSegments<'a> {
 		}
 		else {
 			#[allow(clippy::verbose_bit_mask)]
-			let segments = &input[..input.iter().position(|&b| b & 0x1f == 0).unwrap()];
-			*input = &input[(segments.len() + 1)..];
-			Self::Segments(Slice::until_end(segments))
+			let segments_end_pos = input.iter().position(|&b| b & 0x1f == 0).unwrap() + 1;
+			let mut segments;
+			(segments, *input) = input.split_at(segments_end_pos);
+			Self::Segments(Slice::parse_until_end(&mut segments))
+		}
+	}
+}
+
+impl Encode for WireSegments<'_> {
+	fn encode(&self, out: &mut Vec<u8>) {
+		match self {
+			Self::TeleWireEnd(point) => {
+				out.push(0x20);
+				point.encode(out);
+			},
+
+			Self::Segments(segments) => segments.encode_without_length_prefix(out),
 		}
 	}
 }
@@ -391,6 +495,16 @@ impl<'a> Parse<'a> for WireSegment {
 			length,
 			direction,
 		}
+	}
+}
+
+impl Encode for WireSegment {
+	fn encode(&self, out: &mut Vec<u8>) {
+		let length = self.length & 0x1f;
+		assert_eq!(self.length, length);
+		let direction = u8::from(self.direction);
+		let ws = length | (direction << 5);
+		ws.encode(out);
 	}
 }
 
