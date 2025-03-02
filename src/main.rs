@@ -3,7 +3,7 @@ fn main() {
 	let argv0 = args.next().unwrap_or_else(|| env!("CARGO_BIN_NAME").into());
 	let path = parse_args(args, &argv0);
 
-	let input = std::fs::read(path).unwrap();
+	let input = std::fs::read(&path).unwrap();
 	let circuit_data = <turing_complete_saves_parser::CircuitData as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
 	#[allow(clippy::match_same_arms)]
 	match circuit_data {
