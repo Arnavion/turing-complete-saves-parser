@@ -249,7 +249,7 @@ impl<'a> Parse<'a> for &'a str {
 	fn parse(input: &mut &'a [u8]) -> Self {
 		let len = usize::from(u16::parse(input));
 		let (result, rest) = input.split_at(len);
-		let result = std::str::from_utf8(result).unwrap();
+		let result = str::from_utf8(result).unwrap();
 		*input = rest;
 		result
 	}
