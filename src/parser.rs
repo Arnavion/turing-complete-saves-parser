@@ -147,7 +147,7 @@ where
 {
 	pub fn encode_with_length_prefix(&self, out: &mut Vec<u8>) {
 		let index_pos = out.len();
-		out.extend(std::iter::repeat(0).take(std::mem::size_of::<N>()));
+		out.extend(std::iter::repeat_n(0, std::mem::size_of::<N>()));
 		let element_start_pos = out.len();
 
 		let mut len = 0_usize;
