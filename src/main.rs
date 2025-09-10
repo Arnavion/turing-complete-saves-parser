@@ -7,25 +7,35 @@ fn main() {
 	let circuit_data = <turing_complete_saves_parser::CircuitData as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
 	#[allow(clippy::match_same_arms)]
 	match circuit_data {
-		turing_complete_saves_parser::CircuitData::V6(input) =>
-			_ = <turing_complete_saves_parser::v6::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
-			// println!("{:#?}", <turing_complete_saves_parser::v6::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+		turing_complete_saves_parser::CircuitData::V6(input) => {
+			let cd = <turing_complete_saves_parser::v6::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
+			// println!("{cd:#?}");
+			cd.check_wire_dupes();
+		},
 
-		turing_complete_saves_parser::CircuitData::V7(input) =>
-			_ = <turing_complete_saves_parser::v7::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
-			// println!("{:#?}", <turing_complete_saves_parser::v7::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+		turing_complete_saves_parser::CircuitData::V7(input) => {
+			let cd = <turing_complete_saves_parser::v7::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
+			// println!("{cd:#?}");
+			cd.check_wire_dupes();
+		},
 
-		turing_complete_saves_parser::CircuitData::V8(input) =>
-			_ = <turing_complete_saves_parser::v8::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
-			// println!("{:#?}", <turing_complete_saves_parser::v8::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+		turing_complete_saves_parser::CircuitData::V8(input) => {
+			let cd = <turing_complete_saves_parser::v8::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
+			// println!("{cd:#?}");
+			cd.check_wire_dupes();
+		},
 
-		turing_complete_saves_parser::CircuitData::V9(input) =>
-			_ = <turing_complete_saves_parser::v9::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
-			// println!("{:#?}", <turing_complete_saves_parser::v9::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+		turing_complete_saves_parser::CircuitData::V9(input) => {
+			let cd = <turing_complete_saves_parser::v9::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
+			// println!("{cd:#?}");
+			cd.check_wire_dupes();
+		},
 
-		turing_complete_saves_parser::CircuitData::V10(input) =>
-			_ = <turing_complete_saves_parser::v10::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]),
-			// println!("{:#?}", <turing_complete_saves_parser::v10::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..])),
+		turing_complete_saves_parser::CircuitData::V10(input) => {
+			let cd = <turing_complete_saves_parser::v10::CircuitData<'_> as turing_complete_saves_parser::Parse<'_>>::parse(&mut &input[..]);
+			// println!("{cd:#?}");
+			cd.check_wire_dupes();
+		},
 	}
 }
 

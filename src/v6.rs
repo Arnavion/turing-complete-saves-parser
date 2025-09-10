@@ -21,45 +21,11 @@ pub struct CircuitData<'a> {
 	pub wires: Slice<'a, u64, Wire<'a>>,
 }
 
-impl<'a> Parse<'a> for CircuitData<'a> {
-	fn parse(input: &mut &'a [u8]) -> Self {
-		let custom_id = <_>::parse(input);
-		let hub_id = <_>::parse(input);
-		let gate = <_>::parse(input);
-		let delay = <_>::parse(input);
-		let menu_visible = <_>::parse(input);
-		let clock_speed = <_>::parse(input);
-		let dependencies = Slice::parse_with_length_prefix(input);
-		let description = <_>::parse(input);
-		let camera_position = <_>::parse(input);
-		let synced = <_>::parse(input);
-		_ = u8::parse(input);
-		_ = u16::parse(input);
-		let player_data = Slice::parse_with_length_prefix(input);
-		let hub_description = <_>::parse(input);
-		let components = Slice::parse_with_length_prefix(input);
-		let wires = Slice::parse_with_length_prefix(input);
-
-		let result = Self {
-			custom_id,
-			hub_id,
-			gate,
-			delay,
-			menu_visible,
-			clock_speed,
-			dependencies,
-			description,
-			camera_position,
-			synced,
-			player_data,
-			hub_description,
-			components,
-			wires,
-		};
-
+impl CircuitData<'_> {
+	pub fn check_wire_dupes(&self) {
 		let mut wires: std::collections::BTreeMap<_, _> = Default::default();
 		let mut found_dupes = false;
-		for wire in &result.wires {
+		for wire in &self.wires {
 			let wire = wire.as_inner_ref();
 			let WireSegments::Segments(segments) = &wire.segments else { continue; };
 
@@ -86,8 +52,44 @@ impl<'a> Parse<'a> for CircuitData<'a> {
 			}
 		}
 		assert!(!found_dupes);
+	}
+}
 
-		result
+impl<'a> Parse<'a> for CircuitData<'a> {
+	fn parse(input: &mut &'a [u8]) -> Self {
+		let custom_id = <_>::parse(input);
+		let hub_id = <_>::parse(input);
+		let gate = <_>::parse(input);
+		let delay = <_>::parse(input);
+		let menu_visible = <_>::parse(input);
+		let clock_speed = <_>::parse(input);
+		let dependencies = Slice::parse_with_length_prefix(input);
+		let description = <_>::parse(input);
+		let camera_position = <_>::parse(input);
+		let synced = <_>::parse(input);
+		_ = u8::parse(input);
+		_ = u16::parse(input);
+		let player_data = Slice::parse_with_length_prefix(input);
+		let hub_description = <_>::parse(input);
+		let components = Slice::parse_with_length_prefix(input);
+		let wires = Slice::parse_with_length_prefix(input);
+
+		Self {
+			custom_id,
+			hub_id,
+			gate,
+			delay,
+			menu_visible,
+			clock_speed,
+			dependencies,
+			description,
+			camera_position,
+			synced,
+			player_data,
+			hub_description,
+			components,
+			wires,
+		}
 	}
 }
 
